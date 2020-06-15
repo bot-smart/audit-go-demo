@@ -1,11 +1,11 @@
-package audit
+package main
 
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	uuid "github.com/satori/go.uuid"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -16,28 +16,27 @@ import (
 )
 
 const (
-	apiUrl     = "https://api.botsmart.cn/v1/check/send"
+	queryUrl   = "https://api.botsmart.cn/v1/check/query"
 	appKey     = "" //产品密钥ID
 	appSecret  = "" //产品密钥
 	businessId = "" //业务ID
 )
 
 func main() {
-	// 调用检测接口
-	ret := check()
+	taskIds := []int64{1272376584721129474, 1266367504416641025}
+	jsonString, _ := json.Marshal(taskIds)
+	params := url.Values{"taskIds": []string{string(jsonString)}}
+	ret := query(params)
 	fmt.Println(ret)
 }
 
-func check() *simplejson.Json {
-	params := url.Values{}
+func query(params url.Values) *simplejson.Json {
 	params["app_id"] = []string{appKey}
 	params["business_id"] = []string{businessId}
-	params["unique_id"] = []string{getUuid()}
 	params["timestamp"] = []string{strconv.FormatInt(time.Now().UnixNano()/1000000, 10)}
-	params["data"] = []string{"测试内容"}
 	params["signature"] = []string{genSignature(params)}
 
-	resp, err := http.PostForm(apiUrl, params)
+	resp, err := http.PostForm(queryUrl, params)
 
 	if err != nil {
 		fmt.Println("调用API接口失败:", err)
@@ -49,16 +48,6 @@ func check() *simplejson.Json {
 	contents, _ := ioutil.ReadAll(resp.Body)
 	result, _ := simplejson.NewJson(contents)
 	return result
-}
-
-//获取uuid
-func getUuid() string {
-	u2, err := uuid.NewV4()
-	if err != nil {
-		fmt.Printf("Something went wrong: %s", err)
-		return ""
-	}
-	return u2.String()
 }
 
 //生成签名信息
